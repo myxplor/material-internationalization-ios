@@ -51,73 +51,74 @@ static UIImage *MDFRTLFlippedImage(UIImage *image) {
   CGSize size = image.size;
   CGRect rect = CGRectMake(0.0f, 0.0f, size.width, size.height);
 
-  UIGraphicsBeginImageContextWithOptions(rect.size, NO, image.scale);
-  CGContextRef context = UIGraphicsGetCurrentContext();
-  CGContextSetShouldAntialias(context, true);
-  CGContextSetInterpolationQuality(context, kCGInterpolationHigh);
+  UIGraphicsImageRendererFormat *format = [[UIGraphicsImageRendererFormat alloc] init];
+  format.scale = image.scale;
+  UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:rect.size format:format];
+  UIImage *drawnImage = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull rendererContext) {
+      CGContextRef context = rendererContext.CGContext;
+      CGContextSetShouldAntialias(context, true);
+      CGContextSetInterpolationQuality(context, kCGInterpolationHigh);
 
-  // Note: UIKit's and CoreGraphics coordinates systems are flipped vertically (UIKit's Y axis goes
-  // down, while CoreGraphics' goes up).
-  switch (image.imageOrientation) {
-    case UIImageOrientationUp:
-      CGContextScaleCTM(context, -1, -1);
-      CGContextTranslateCTM(context, -rect.size.width, -rect.size.height);
-      break;
-    case UIImageOrientationDown:
-      // Orientation down is equivalent to a 180º rotation. The difference in coordinates systems is
-      // thus sufficient and nothing needs to be down to flip the image.
-      break;
-    case UIImageOrientationLeft:
-      CGContextRotateCTM(context, -(CGFloat)M_PI_2);
-      CGContextTranslateCTM(context, -rect.size.width, 0);
-      break;
-    case UIImageOrientationRight:
-      CGContextRotateCTM(context, (CGFloat)M_PI_2);
-      CGContextTranslateCTM(context, 0, -rect.size.width);
-      break;
-    case UIImageOrientationUpMirrored:
-      CGContextScaleCTM(context, 1, -1);
-      CGContextTranslateCTM(context, 0, -rect.size.height);
-      break;
-    case UIImageOrientationDownMirrored:
-      CGContextScaleCTM(context, -1, 1);
-      CGContextTranslateCTM(context, -rect.size.width, 0);
-      break;
-    case UIImageOrientationLeftMirrored:
-      CGContextRotateCTM(context, -(CGFloat)M_PI_2);
-      CGContextTranslateCTM(context, -rect.size.width, 0);
-      CGContextScaleCTM(context, -1, 1);
-      CGContextTranslateCTM(context, -rect.size.width, 0);
-      break;
-    case UIImageOrientationRightMirrored:
-      CGContextRotateCTM(context, (CGFloat)M_PI_2);
-      CGContextTranslateCTM(context, 0, -rect.size.width);
-      CGContextScaleCTM(context, -1, 1);
-      CGContextTranslateCTM(context, -rect.size.width, 0);
-      break;
-    default:
-      NSCAssert(NO, @"Invalid enumeration value %i.", (int)image.imageOrientation);
-  }
+      // Note: UIKit's and CoreGraphics coordinates systems are flipped vertically (UIKit's Y axis goes
+      // down, while CoreGraphics' goes up).
+      switch (image.imageOrientation) {
+        case UIImageOrientationUp:
+          CGContextScaleCTM(context, -1, -1);
+          CGContextTranslateCTM(context, -rect.size.width, -rect.size.height);
+          break;
+        case UIImageOrientationDown:
+          // Orientation down is equivalent to a 180º rotation. The difference in coordinates systems is
+          // thus sufficient and nothing needs to be down to flip the image.
+          break;
+        case UIImageOrientationLeft:
+          CGContextRotateCTM(context, -(CGFloat)M_PI_2);
+          CGContextTranslateCTM(context, -rect.size.width, 0);
+          break;
+        case UIImageOrientationRight:
+          CGContextRotateCTM(context, (CGFloat)M_PI_2);
+          CGContextTranslateCTM(context, 0, -rect.size.width);
+          break;
+        case UIImageOrientationUpMirrored:
+          CGContextScaleCTM(context, 1, -1);
+          CGContextTranslateCTM(context, 0, -rect.size.height);
+          break;
+        case UIImageOrientationDownMirrored:
+          CGContextScaleCTM(context, -1, 1);
+          CGContextTranslateCTM(context, -rect.size.width, 0);
+          break;
+        case UIImageOrientationLeftMirrored:
+          CGContextRotateCTM(context, -(CGFloat)M_PI_2);
+          CGContextTranslateCTM(context, -rect.size.width, 0);
+          CGContextScaleCTM(context, -1, 1);
+          CGContextTranslateCTM(context, -rect.size.width, 0);
+          break;
+        case UIImageOrientationRightMirrored:
+          CGContextRotateCTM(context, (CGFloat)M_PI_2);
+          CGContextTranslateCTM(context, 0, -rect.size.width);
+          CGContextScaleCTM(context, -1, 1);
+          CGContextTranslateCTM(context, -rect.size.width, 0);
+          break;
+        default:
+          NSCAssert(NO, @"Invalid enumeration value %i.", (int)image.imageOrientation);
+      }
 
-  // If the UIImage is not backed by a CGImage, create one from the CIImage
-  if (image.CGImage) {
-    CGContextDrawImage(context, rect, image.CGImage);
-  } else if (image.CIImage) {
-    CIImage *coreImage = image.CIImage;
-    CIContext *coreImageContext = [CIContext context];
-    CGImageRef coreGraphicsImage =
-        [coreImageContext createCGImage:coreImage fromRect:coreImage.extent];
-    if (coreGraphicsImage) {
-      CGContextDrawImage(context, rect, coreGraphicsImage);
-      CFRelease(coreGraphicsImage);
-      coreGraphicsImage = NULL;
-    }
-  } else {
-    NSCAssert(NO, @"Unable to flip image without a CGImage or CIImage backing store");
-  }
-
-  UIImage *drawnImage = UIGraphicsGetImageFromCurrentImageContext();
-  UIGraphicsEndImageContext();
+      // If the UIImage is not backed by a CGImage, create one from the CIImage
+      if (image.CGImage) {
+        CGContextDrawImage(context, rect, image.CGImage);
+      } else if (image.CIImage) {
+        CIImage *coreImage = image.CIImage;
+        CIContext *coreImageContext = [CIContext context];
+        CGImageRef coreGraphicsImage =
+            [coreImageContext createCGImage:coreImage fromRect:coreImage.extent];
+        if (coreGraphicsImage) {
+          CGContextDrawImage(context, rect, coreGraphicsImage);
+          CFRelease(coreGraphicsImage);
+          coreGraphicsImage = NULL;
+        }
+      } else {
+        NSCAssert(NO, @"Unable to flip image without a CGImage or CIImage backing store");
+      }
+  }];
 
   // Port the rendering mode.
   UIImage *flippedImage = [drawnImage imageWithRenderingMode:image.renderingMode];
